@@ -1,0 +1,2322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carga de Trabajo - Cambios de Configuración</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-left h1 { font-size: 28px; margin-bottom: 5px; }
+        .header-right {
+            display: flex;
+            gap: 15px;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+            border-color: white;
+        }
+
+        .content { padding: 30px; }
+        .upload-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .file-input-label {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        input[type="file"] { display: none; }
+        .file-name { margin-left: 15px; color: #666; font-size: 14px; }
+
+        /* SISTEMA DE PESTAÑAS */
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* DASHBOARD STYLES */
+        .dashboard-section {
+            margin-bottom: 40px;
+        }
+        .dashboard-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .metric-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 30px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+        .metric-card.total::before { background: #2196f3; }
+        .metric-card.cambios::before { background: #f44336; }
+        .metric-card.confirmaciones::before { background: #4caf50; }
+        .metric-card.moldes::before { background: #ff9800; }
+
+        .metric-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .metric-value {
+            font-size: 42px;
+            font-weight: 900;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .metric-card.cambios .metric-value { color: #f44336; }
+        .metric-card.confirmaciones .metric-value { color: #4caf50; }
+        .metric-card.moldes .metric-value { color: #ff9800; }
+        .metric-card.total .metric-value { color: #2196f3; }
+        
+        .metric-subtext {
+            font-size: 12px;
+            color: #999;
+            font-weight: 500;
+        }
+
+        /* HEATMAP STYLES */
+        .heatmap-section {
+            margin-bottom: 40px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .heatmap-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .heatmap-subtitle {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .heatmap-info {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            font-size: 13px;
+            color: #666;
+            border-left: 4px solid #667eea;
+        }
+        .capacity-bar {
+            background: white;
+            padding: 18px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: grid;
+            grid-template-columns: 150px 1fr 120px;
+            gap: 20px;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+        }
+        .capacity-date {
+            font-weight: 700;
+            color: #333;
+            font-size: 14px;
+        }
+        .capacity-bar-visual {
+            position: relative;
+            height: 35px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 2px solid #ddd;
+        }
+        .capacity-fill {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 12px;
+            transition: all 0.3s;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .capacity-fill.verde { background: linear-gradient(90deg, #4caf50, #45a049); }
+        .capacity-fill.amarillo { background: linear-gradient(90deg, #ff9800, #fb8c00); }
+        .capacity-fill.rojo { background: linear-gradient(90deg, #f44336, #e53935); }
+
+        .capacity-count {
+            font-weight: 700;
+            color: #333;
+            text-align: center;
+            font-size: 13px;
+            padding: 8px 15px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            border: 1px solid #eee;
+        }
+
+        .legend {
+            display: flex;
+            gap: 25px;
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 2px solid rgba(0,0,0,0.1);
+            font-size: 13px;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+        }
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* DESGLOSE DETALLADO STYLES */
+        .desglose-container {
+            margin-top: 40px;
+            padding-top: 40px;
+            border-top: 2px solid #eee;
+        }
+
+        .desglose-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .day-section {
+            margin-bottom: 25px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .day-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .day-stats {
+            background: #f0f0f0;
+            padding: 15px 20px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stat-label { font-size: 12px; color: #666; text-transform: uppercase; }
+        .stat-value { font-size: 24px; font-weight: bold; margin-top: 5px; }
+        .stat-value.cambios { color: #f44336; }
+        .stat-value.confirmaciones { color: #4caf50; }
+        .stat-value.total { color: #2196f3; }
+
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .orders-table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+        }
+        .orders-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .orders-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        .order-row.cambio {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+        }
+        .order-row.confirmacion {
+            background: #f1f8e9;
+            border-left: 4px solid #4caf50;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge.cambio {
+            background: #ffcdd2;
+            color: #b71c1c;
+        }
+        .badge.confirmacion {
+            background: #c8e6c9;
+            color: #1b5e20;
+        }
+
+        .pn-transition {
+            font-family: monospace;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #f5f5f5;
+        }
+        .pn-transition.cambio {
+            background: #ffcdd2;
+            color: #b71c1c;
+        }
+        .pn-transition.confirmacion {
+            background: #c8e6c9;
+            color: #1b5e20;
+        }
+
+        /* ===== TIMELINE HORIZONTAL (ÚNICA VISUALIZACIÓN) ===== */
+        .timeline-horizontal-container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        .timeline-horizontal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .timeline-horizontal-subtitle {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 30px;
+        }
+        .timeline-chart {
+            position: relative;
+            width: 100%;
+            min-height: 600px;
+            margin-bottom: 30px;
+            padding-top: 80px;
+        }
+        .timeline-zones {
+            position: absolute;
+            top: 80px;
+            left: 60px;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            z-index: 1;
+        }
+        .timeline-zone {
+            flex: 1;
+            opacity: 0.08;
+            border-right: 1px solid #eee;
+        }
+        .timeline-zone.verde { background: #4caf50; }
+        .timeline-zone.amarillo { background: #ff9800; }
+        .timeline-zone.rojo { background: #f44336; }
+        .timeline-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+        }
+        .timeline-axis {
+            position: absolute;
+            left: 0;
+            top: 80px;
+            width: 60px;
+            height: 450px;
+            border-right: 2px solid #ddd;
+            font-size: 11px;
+            font-weight: 500;
+            color: #666;
+            z-index: 3;
+        }
+        .timeline-dates {
+            display: flex;
+            position: absolute;
+            bottom: 0;
+            left: 60px;
+            right: 0;
+            height: 50px;
+            top: 530px;
+            z-index: 4;
+        }
+        .timeline-date-label {
+            flex: 1;
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            font-weight: 600;
+            border-right: 1px solid #eee;
+            padding-top: 8px;
+        }
+        .timeline-point {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            z-index: 10;
+        }
+        .timeline-point-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: #f44336;
+            box-shadow: 0 0 8px rgba(244, 67, 54, 0.6);
+            border: 2px solid white;
+        }
+        .timeline-tooltip {
+            position: absolute;
+            left: 50%;
+            bottom: 120%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 20;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .timeline-point:hover .timeline-tooltip {
+            opacity: 1;
+        }
+
+        .kpi-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .kpi-box {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        .kpi-box.alto {
+            border-left-color: #4caf50;
+            background: linear-gradient(135deg, #f1f8e9 0%, #e8f5e9 100%);
+        }
+        .kpi-box.bajo {
+            border-left-color: #f44336;
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+        }
+        .kpi-box.medio {
+            border-left-color: #ff9800;
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+        }
+        .kpi-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+        .kpi-valor {
+            font-size: 36px;
+            font-weight: 900;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .kpi-detalle {
+            font-size: 12px;
+            color: #999;
+            font-weight: 500;
+        }
+
+        /* ESTILOS PARA TABLA DE RETRASADAS */
+        .retrasada-amarillo {
+            background: #ffc107 !important;
+            color: #000 !important;
+            font-weight: 700;
+        }
+        .retrasada-naranja {
+            background: #ff9800 !important;
+            color: #fff !important;
+            font-weight: 700;
+        }
+        .retrasada-rojo {
+            background: #f44336 !important;
+            color: #fff !important;
+            font-weight: 700;
+        }
+
+        /* ESTILOS PARA GRÁFICAS */
+        .grid-graficas {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+        @media (max-width: 1024px) {
+            .grid-graficas {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ===== BADGE PM CON TOOLTIP ===== */
+        .badge-pm {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 700;
+            margin-left: 6px;
+            cursor: help;
+            position: relative;
+            vertical-align: middle;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .badge-pm.warning {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fbbf24;
+        }
+        
+        .badge-pm.critical {
+            background: #fecaca;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+            animation: pulse-pm 2s infinite;
+        }
+        
+        @keyframes pulse-pm {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* Tooltip para Badge PM */
+        .pm-tooltip {
+            display: inline-block;
+            position: relative;
+        }
+        
+        .pm-tooltip .tooltiptext {
+            visibility: hidden;
+            width: 320px;
+            background-color: #1f2937;
+            color: #fff;
+            text-align: left;
+            border-radius: 8px;
+            padding: 14px;
+            position: absolute;
+            z-index: 1000;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 100%;
+            margin-bottom: 8px;
+            font-size: 12px;
+            line-height: 1.6;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            white-space: normal;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        
+        .pm-tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -8px;
+            border-width: 8px;
+            border-style: solid;
+            border-color: #1f2937 transparent transparent transparent;
+        }
+        
+        .pm-tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .tooltip-header {
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+        
+        .tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 11px;
+        }
+        
+        .tooltip-label {
+            color: #9ca3af;
+            font-weight: 500;
+        }
+        
+        .tooltip-value {
+            color: #fff;
+            font-weight: 700;
+        }
+        
+        .tooltip-alert {
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(239, 68, 68, 0.2);
+            border-left: 3px solid #ef4444;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .tooltip-warning {
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(251, 191, 36, 0.2);
+            border-left: 3px solid #fbbf24;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <h1>⚙️ Carga de Trabajo - Cambios de Configuración</h1>
+                <p style="margin-top: 5px; opacity: 0.9; font-size: 14px;">Sistema de monitoreo operativo</p>
+            </div>
+            <div class="header-right">
+                <button class="tab-btn active" onclick="switchTab('resumen')">📊 Resumen General</button>
+                <button class="tab-btn" onclick="switchTab('impacto')">⚡ Impacto de Carga Diaria</button>
+                <button class="tab-btn" onclick="switchTab('planeacion')">📋 Plan de Trabajo</button>
+                <button class="tab-btn" onclick="switchTab('analisisRetrasos')">📊 Análisis de Cumplimiento</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="upload-section">
+                <div>
+                    <h2>📋 Plan de Producción (CSV)</h2>
+                    <input type="file" id="planFile" accept=".csv" />
+                    <label for="planFile" class="file-input-label">Seleccionar Plan</label>
+                    <span class="file-name" id="planFileName">Ningún archivo</span>
+                </div>
+
+                <div>
+                    <h2>🔧 ToolHistory (CSV)</h2>
+                    <input type="file" id="toolHistoryFile" accept=".csv" />
+                    <label for="toolHistoryFile" class="file-input-label">Seleccionar ToolHistory</label>
+                    <span class="file-name" id="toolHistoryFileName">Ningún archivo</span>
+                </div>
+            </div>
+
+            <!-- TAB 1: RESUMEN GENERAL (Dashboard + Desglose) -->
+            <div id="resumen-tab" class="tab-content active">
+                <!-- DASHBOARD PRINCIPAL -->
+                <div class="dashboard-section">
+                    <div class="dashboard-title">📈 Resumen Ejecutivo</div>
+                    <div class="metrics-grid">
+                        <div class="metric-card moldes">
+                            <div class="metric-icon">🏭</div>
+                            <div class="metric-label">Moldes</div>
+                            <div class="metric-value" id="totalMoldes">0</div>
+                            <div class="metric-subtext">Máquinas diferentes</div>
+                        </div>
+                        <div class="metric-card cambios">
+                            <div class="metric-icon">🔄</div>
+                            <div class="metric-label">Cambios</div>
+                            <div class="metric-value" id="totalCambios">0</div>
+                            <div class="metric-subtext">Acciones requeridas</div>
+                        </div>
+                        <div class="metric-card confirmaciones">
+                            <div class="metric-icon">✅</div>
+                            <div class="metric-label">Confirmadas</div>
+                            <div class="metric-value" id="totalConfirmaciones">0</div>
+                            <div class="metric-subtext">Moldes validados</div>
+                        </div>
+                        <div class="metric-card total">
+                            <div class="metric-icon">📦</div>
+                            <div class="metric-label">Órdenes</div>
+                            <div class="metric-value" id="totalOrdenes">0</div>
+                            <div class="metric-subtext">Operaciones totales</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DESGLOSE DETALLADO -->
+                <div class="desglose-container">
+                    <div class="desglose-title">📋 Desglose Detallado por Día</div>
+                    <div style="margin-bottom: 20px;">
+                        <input type="text" id="buscarMolde" placeholder="🔍 Buscar por molde o máquina..." style="width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;" onkeyup="filtrarDesglose()">
+                        <small style="color: #999; display: block; margin-top: 5px;">Escribe el código del molde (L3353208) o número de máquina (154, 157, 160...)</small>
+                    </div>
+                    <div id="cargaPorDiaContainer"></div>
+                </div>
+            </div>
+
+            <!-- TAB 2: IMPACTO DE CARGA DIARIA (Timeline Horizontal) -->
+            <div id="impacto-tab" class="tab-content">
+                <div class="timeline-horizontal-container">
+                    <div class="timeline-horizontal-title">📈 Timeline Horizontal - Carga Concentrada</div>
+                    <div class="timeline-horizontal-subtitle">Visualiza la distribución de cambios en el tiempo. Las barras muestran el volumen de cambios por día.</div>
+                    <div class="timeline-chart">
+                        <div class="timeline-zones" id="timelineZones"></div>
+                        <div class="timeline-axis"></div>
+                        <div id="timelineHContainer" style="position: absolute; left: 60px; top: 80px; width: calc(100% - 60px); height: 450px;"></div>
+                        <div class="timeline-dates" id="timelineHDates"></div>
+                    </div>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: linear-gradient(180deg, #4caf50, #45a049);"></div>
+                            <span>✅ Verde: &lt; 5 cambios (Disponible)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: linear-gradient(180deg, #ff9800, #fb8c00);"></div>
+                            <span>📌 Amarillo: 5-7.4 cambios (Ajustada)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: linear-gradient(180deg, #f44336, #e53935);"></div>
+                            <span>⚠️ Rojo: &gt; 7.4 cambios (Sobrecarga)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: PLAN DE TRABAJO -->
+            <div id="planeacion-tab" class="tab-content">
+                <div class="dashboard-section">
+                    <div class="dashboard-title">📦 Gestión de Moldes</div>
+                    <div class="upload-section" style="grid-template-columns: 1fr 1fr 1fr;">
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Código Molde</label>
+                            <input type="text" id="moldCode" placeholder="Ej: L3456802" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Complejidad</label>
+                            <select id="moldComplexity" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">Seleccionar...</option>
+                                <option value="ALTA">🔴 ALTA</option>
+                                <option value="MEDIA">🟡 MEDIA</option>
+                                <option value="BAJA">🟢 BAJA</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Tiempo (h)</label>
+                            <input type="number" id="moldTime" placeholder="8" min="1" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                    </div>
+                    <button onclick="guardarMolde()" style="margin-top: 12px; padding: 12px 24px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">✅ Guardar Molde</button>
+                    <div id="moldList" style="margin-top: 20px; max-height: 300px; overflow-y: auto; padding: 12px; background: #f9f9f9; border-radius: 6px;">
+                        <p style="color: #999; font-size: 13px;">Moldes guardados aparecerán aquí...</p>
+                    </div>
+                </div>
+
+                <div class="dashboard-section">
+                    <div class="dashboard-title">📊 Tabla de Cambios de Configuración</div>
+                    
+                    <!-- BUSCADOR DE MOLDES/MÁQUINAS -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #667eea;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">🔍 Buscar por Molde o Máquina</label>
+                        <input 
+                            type="text" 
+                            id="buscarPlaneacion" 
+                            placeholder="Ej: L3456802 o 327" 
+                            oninput="filtrarPlaneacion()"
+                            style="width: 100%; padding: 12px; border: 2px solid #667eea; border-radius: 6px; font-size: 14px; font-weight: 500;">
+                        <p style="font-size: 12px; color: #666; margin-top: 8px;">💡 Escribe el código del molde o número de máquina para filtrar</p>
+                    </div>
+                    
+                    <div id="statusIndicator" style="background: #e3f2fd; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: none; border-left: 4px solid #2196f3;">
+                        <p><strong>Hoy:</strong> <span id="todayDate">-</span> | <strong>Capacidad:</strong> <span id="capacityLeft">-</span> | <strong>Estado:</strong> <span id="statusEmoji">-</span> <span id="statusText">-</span></p>
+                    </div>
+                    <div id="csvStats" style="background: #e8f5e9; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: none; border-left: 4px solid #4caf50;">
+                        <p style="font-size: 13px;"><strong>✅ Cambios:</strong> <span id="csvMoldCount">0</span> | <strong>Fechas:</strong> <span id="csvDateRange">-</span> | <strong>📱 Disponibles en App:</strong> <span id="appMoldCount" style="font-weight: 700; color: #667eea;">0/0</span> (<span id="appMoldPercent" style="font-weight: 700;">0%</span>)</p>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table id="distribucionTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <thead>
+                                <tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">
+                                    <th style="padding: 12px; text-align: center;">ID</th>
+                                    <th style="padding: 12px; text-align: center;">✓</th>
+                                    <th style="padding: 12px; text-align: center;">Máquina</th>
+                                    <th style="padding: 12px; text-align: left;">Molde</th>
+                                    <th style="padding: 12px; text-align: left;">Complejidad + PN</th>
+                                    <th style="padding: 12px; text-align: left;">Entrada</th>
+                                    <th style="padding: 12px; text-align: left;">Estado</th>
+                                    <th style="padding: 12px; text-align: left;">Comentarios</th>
+                                </tr>
+                            </thead>
+                            <tbody id="distribucionBody">
+                                <tr><td colspan="7" style="padding: 30px; text-align: center; color: #999;">⏳ Carga los archivos CSV en <strong>"Resumen General"</strong> primero</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="dashboard-section">
+                    <div class="dashboard-title">📈 Análisis de Cumplimiento - Plan de Trabajo</div>
+                    <div style="background: #f0f4ff; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #667eea;">
+                        <p style="font-size: 13px; color: #333;"><strong>Meta:</strong> Completar al menos el 80% de los cambios planeados</p>
+                    </div>
+                    <div class="kpi-container">
+                        <div class="kpi-box" id="kpiCumplimiento">
+                            <div class="kpi-label">% Cumplimiento</div>
+                            <div class="kpi-valor" id="porcentajeCumplimiento">0%</div>
+                            <div class="kpi-detalle" id="estadoCumplimiento">-</div>
+                        </div>
+                        <div class="kpi-box">
+                            <div class="kpi-label">vs Meta (80%)</div>
+                            <div class="kpi-valor" id="diferenciaMeta">0%</div>
+                            <div class="kpi-detalle" id="textoMeta">-</div>
+                        </div>
+                        <div class="kpi-box">
+                            <div class="kpi-label">Completados</div>
+                            <div class="kpi-valor" id="cambiosCompletados">0/0</div>
+                            <div class="kpi-detalle">cambios</div>
+                        </div>
+                        <div class="kpi-box">
+                            <div class="kpi-label">Pendientes</div>
+                            <div class="kpi-valor" id="cambiosPendientes">0</div>
+                            <div class="kpi-detalle">por ejecutar</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: ANÁLISIS DE CUMPLIMIENTO - RETRASADAS -->
+            <div id="analisisRetrasos-tab" class="tab-content">
+                <div class="dashboard-section">
+                    <div class="dashboard-title">
+                        📊 Análisis de Cumplimiento del Plan
+                        <button onclick="actualizarAnalisisRetrasadas()" style="margin-left: auto; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">🔄 Actualizar</button>
+                    </div>
+                    <div style="background: #f0f4ff; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #667eea;">
+                        <p style="font-size: 13px; color: #333;"><strong>Meta:</strong> Completar al menos el 80% de los cambios planeados | <strong>Criterio de Retraso:</strong> Órdenes con fecha anterior a hoy sin completar</p>
+                    </div>
+                    
+                    <!-- KPIs PRINCIPALES -->
+                    <div class="metrics-grid">
+                        <div class="metric-card total">
+                            <div class="metric-icon">📊</div>
+                            <div class="metric-label">Total Planeados</div>
+                            <div class="metric-value" id="totalPlaneadosKPI">0</div>
+                            <div class="metric-subtext">cambios totales</div>
+                        </div>
+                        <div class="metric-card confirmaciones">
+                            <div class="metric-icon">✅</div>
+                            <div class="metric-label">Completados</div>
+                            <div class="metric-value" id="totalCompletadosKPI">0</div>
+                            <div class="metric-subtext">ejecutados</div>
+                        </div>
+                        <div class="metric-card cambios">
+                            <div class="metric-icon">📈</div>
+                            <div class="metric-label">% Cumplimiento</div>
+                            <div class="metric-value" id="porcentajeCumplimientoKPI">0%</div>
+                            <div class="metric-subtext" id="estadoCumplimientoKPI">Sin datos</div>
+                        </div>
+                        <div class="metric-card moldes">
+                            <div class="metric-icon">⚠️</div>
+                            <div class="metric-label">Retrasadas</div>
+                            <div class="metric-value" id="totalRetrasadas">0</div>
+                            <div class="metric-subtext">órdenes vencidas</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GRÁFICAS -->
+                <div class="grid-graficas">
+                    <div class="chart-container">
+                        <div class="chart-title">📊 Comparativa: Planeado vs Ejecutado</div>
+                        <div class="chart-wrapper">
+                            <canvas id="chartComparativa"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <div class="chart-title">🎯 Cumplimiento de Meta (80%)</div>
+                        <div class="chart-wrapper">
+                            <canvas id="chartCumplimiento"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ANÁLISIS DE RETRASADAS -->
+                <div class="dashboard-section">
+                    <div class="dashboard-title">⏳ Órdenes Retrasadas - Detalle</div>
+                    <div style="background: #fff3e0; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #ff9800;">
+                        <p style="font-size: 13px; color: #333;">
+                            <strong>Días Promedio Retraso:</strong> <span id="diasPromedio" style="font-weight: 700; font-size: 16px;">0</span> días | 
+                            <strong>Fecha Más Vieja:</strong> <span id="fechaMasVieja" style="font-weight: 700;">-</span>
+                        </p>
+                    </div>
+                    
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <thead>
+                                <tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">
+                                    <th style="padding: 12px; text-align: center;">ID</th>
+                                    <th style="padding: 12px; text-align: center;">Molde</th>
+                                    <th style="padding: 12px; text-align: center;">Máquina</th>
+                                    <th style="padding: 12px; text-align: left;">Entrada</th>
+                                    <th style="padding: 12px; text-align: center;">Días Retrasada</th>
+                                    <th style="padding: 12px; text-align: center;">Estado</th>
+                                    <th style="padding: 12px; text-align: left;">Comentario</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaRetrasadasBody">
+                                <tr><td colspan="7" style="padding: 30px; text-align: center; color: #999;">⏳ Carga datos en "Resumen General" para ver análisis</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+    <script>
+        const CAPACIDAD_CAMBIOS = 7.4;
+        let datosDesgloseGlobal = {};
+        let datosPlaneacionGlobal = []; // Para filtrado en Plan de Trabajo
+        
+        // Lista de moldes registrados en la app de Change Over
+        const MOLDES_EN_APP = [
+            'l31410b4', 'l33492a1', 'l33492a3', 'l33492a6', 'l33542a2', 'l33542a4',
+            'l160044a', 'l160044f', 'l160099d', 'l203259b', 'l1600730', 'l3070041',
+            'l3070044', 'l3070047', 'l3070046', 'l3111102', 'l3115704', 'l3349206',
+            'l3349216', 'l3353208'
+        ];
+
+        document.getElementById('planFile').addEventListener('change', function(e) {
+            document.getElementById('planFileName').textContent = e.target.files[0]?.name || 'Ningún archivo';
+            processFiles();
+        });
+
+        document.getElementById('toolHistoryFile').addEventListener('change', function(e) {
+            document.getElementById('toolHistoryFileName').textContent = e.target.files[0]?.name || 'Ningún archivo';
+            processFiles();
+        });
+
+        function switchTab(tabName) {
+            document.getElementById('resumen-tab').classList.remove('active');
+            document.getElementById('impacto-tab').classList.remove('active');
+            document.getElementById('planeacion-tab').classList.remove('active');
+            document.getElementById('analisisRetrasos-tab').classList.remove('active');
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+
+            // ACTUALIZAR PLAN cuando se cambia a esa pestaña
+            if (tabName === 'planeacion') {
+                setTimeout(() => actualizarVistaPlaneacion(), 100);
+            }
+            
+            // ACTUALIZAR ANÁLISIS DE RETRASADAS cuando se cambia a esa pestaña
+            if (tabName === 'analisisRetrasos') {
+                setTimeout(() => actualizarAnalisisRetrasadas(), 100);
+            }
+        }
+
+        function processFiles() {
+            const planFile = document.getElementById('planFile').files[0];
+            const toolHistoryFile = document.getElementById('toolHistoryFile').files[0];
+
+            if (!planFile || !toolHistoryFile) return;
+
+            Promise.all([
+                readFile(planFile),
+                readFile(toolHistoryFile)
+            ]).then(([planCsv, toolHistoryCsv]) => {
+                analyzeData(planCsv, toolHistoryCsv);
+            });
+        }
+
+        function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsText(file);
+            });
+        }
+
+        function parseCsv(csv, type = 'plan') {
+            const parsed = Papa.parse(csv, {
+                header: false,
+                dynamicTyping: false,
+                skipEmptyLines: true
+            });
+
+            const allRows = parsed.data;
+            
+            let headerRowIndex = -1;
+            for (let i = 0; i < Math.min(allRows.length, 15); i++) {
+                const row = allRows[i];
+                if (row[0] === 'Lc' || row[0] === 'ResourceName' || (Array.isArray(row) && row.join(',').includes('PartNumber'))) {
+                    headerRowIndex = i;
+                    break;
+                }
+            }
+
+            if (headerRowIndex === -1) return [];
+
+            const headers = allRows[headerRowIndex];
+            const data = [];
+
+            for (let i = headerRowIndex + 1; i < allRows.length; i++) {
+                const row = allRows[i];
+                if (!row || !row[0]) continue;
+
+                const rowObj = {};
+                headers.forEach((header, idx) => {
+                    rowObj[header.trim()] = (row[idx] || '').trim();
+                });
+
+                if (type === 'plan') {
+                    if (rowObj.Lc && rowObj.Tool && rowObj['Pl. Start']) {
+                        data.push(rowObj);
+                    }
+                } else if (type === 'toolhistory') {
+                    if (rowObj.ResourceName && rowObj.PartNumber) {
+                        data.push(rowObj);
+                    }
+                }
+            }
+
+            return data;
+        }
+
+        function parsearFecha(fechaStr) {
+            if (!fechaStr) return null;
+            try {
+                const partes = fechaStr.split(' ');
+                const datePart = partes[0];
+                const timePart = partes[1] || "00:00";
+                const [dia, mes, anio] = datePart.split('/');
+                
+                const [horas, minutos] = timePart.split(':');
+                const fecha = new Date(parseInt(anio), parseInt(mes) - 1, parseInt(dia), parseInt(horas), parseInt(minutos), 0, 0);
+                
+                if (isNaN(fecha.getTime())) return null;
+                
+                const year = fecha.getFullYear();
+                const month = String(fecha.getMonth() + 1).padStart(2, '0');
+                const day = String(fecha.getDate()).padStart(2, '0');
+                const fechaKey = `${year}-${month}-${day}`;
+                const hora = timePart;
+                
+                return { fecha, fechaKey, hora };
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function analyzeData(planCsv, toolHistoryCsv) {
+            const planData = parseCsv(planCsv, 'plan');
+            const toolHistoryData = parseCsv(toolHistoryCsv, 'toolhistory');
+
+            const toolCurrentPN = {};
+            const toolHistory = {};
+            
+            toolHistoryData.forEach(row => {
+                const tool = row['ResourceName']?.trim().toLowerCase() || '';
+                const pn = row['PartNumber']?.trim() || '';
+                const txnDate = row['TxnDate']?.trim() || '';
+                
+                if (tool && pn && txnDate) {
+                    if (!toolHistory[tool]) {
+                        toolHistory[tool] = [];
+                    }
+                    toolHistory[tool].push({ pn, txnDate });
+                    
+                    if (!toolCurrentPN[tool]) {
+                        toolCurrentPN[tool] = { pn, date: new Date(txnDate) };
+                    } else {
+                        const currentDate = new Date(txnDate);
+                        if (currentDate > toolCurrentPN[tool].date) {
+                            toolCurrentPN[tool] = { pn, date: currentDate };
+                        }
+                    }
+                }
+            });
+            
+            Object.keys(toolCurrentPN).forEach(tool => {
+                toolCurrentPN[tool] = toolCurrentPN[tool].pn;
+            });
+
+            const groupedByLcTool = {};
+            planData.forEach(row => {
+                const lc = row['Lc']?.trim() || '';
+                const tool = row['Tool']?.trim() || '';
+                const pn = row['PartNumber']?.trim() || '';
+                const st = row['St']?.trim() || '';
+                const rlSt = row['Rl St']?.trim() || '';
+                const plStart = row['Pl. Start']?.trim() || '';
+                
+                // NUEVO: Capturar datos de PM
+                const hrs = parseFloat((row['Hrs'] || '').replace(',', '')) || 0;
+                const pmPct = parseFloat((row['PM%'] || '').replace('%', '').replace(' ', '')) || 0;
+                const nextHrsPM = parseFloat((row['Next Hrs PM'] || '').replace(',', '')) || 999;
+                const diff = parseFloat((row['Diff'] || '').replace(',', '')) || 0;
+
+                if (!lc || !tool || !plStart) return;
+
+                const key = `${lc}|${tool}`;
+                if (!groupedByLcTool[key]) {
+                    groupedByLcTool[key] = [];
+                }
+
+                const fechaParsed = parsearFecha(plStart);
+                if (!fechaParsed) return;
+
+                groupedByLcTool[key].push({
+                    lc, tool, pn, st, rlSt, plStart,
+                    fecha: fechaParsed,
+                    fechaKey: fechaParsed.fechaKey,
+                    hora: fechaParsed.hora,
+                    // NUEVO: Incluir datos de PM
+                    hrs,
+                    pmPct,
+                    nextHrsPM,
+                    diff
+                });
+            });
+
+            Object.keys(groupedByLcTool).forEach(key => {
+                groupedByLcTool[key].sort((a, b) => {
+                    return new Date(a.fecha) - new Date(b.fecha);
+                });
+            });
+
+            const porFecha = {};
+
+            Object.keys(groupedByLcTool).forEach(key => {
+                const group = groupedByLcTool[key];
+                let prevPn = null;
+                let isFirstOrder = true;
+
+                group.forEach((order, idx) => {
+                    const fechaKey = order.fechaKey;
+
+                    if (!porFecha[fechaKey]) {
+                        porFecha[fechaKey] = {
+                            fecha: fechaKey,
+                            ordenes: [],
+                            totalCambios: 0,
+                            totalConfirmaciones: 0
+                        };
+                    }
+
+                    let tipo = 'CONFIRMACIÓN';
+                    let validacion = '';
+                    let pnAnterior = null;
+
+                    if (isFirstOrder) {
+                        isFirstOrder = false;
+
+                        if (!order.pn) {
+                            tipo = 'CONFIRMACIÓN';
+                            validacion = `Máquina en estado ${order.st}+${order.rlSt}, sin PN especificado`;
+                        } else if (order.st === 'UP' && order.rlSt === 'WIP') {
+                            tipo = 'CONFIRMACIÓN';
+                            validacion = `Molde EN MARCHA con PN: ${order.pn}`;
+                        } else {
+                            const toolPnActual = toolCurrentPN[order.tool.toLowerCase()];
+                            if (toolPnActual === order.pn) {
+                                tipo = 'CONFIRMACIÓN';
+                                validacion = `✅ ToolHistory (Tool: ${order.tool}) confirma PN: ${order.pn}`;
+                            } else if (toolPnActual) {
+                                tipo = 'CAMBIO';
+                                pnAnterior = toolPnActual;
+                                validacion = `ToolHistory (${order.tool}): ${toolPnActual} → Plan pide: ${order.pn}`;
+                            } else {
+                                tipo = 'CAMBIO';
+                                pnAnterior = 'NUEVO';
+                                validacion = `Tool ${order.tool} NO en ToolHistory → Nuevo PN: ${order.pn}`;
+                            }
+                        }
+
+                        prevPn = order.pn || 'N/A';
+                    } else {
+                        const currentPn = order.pn || 'N/A';
+                        if (currentPn !== prevPn) {
+                            tipo = 'CAMBIO';
+                            pnAnterior = prevPn;
+                            validacion = `Cambio detectado en plan`;
+                        } else {
+                            tipo = 'CONFIRMACIÓN';
+                            validacion = `PN sin cambio, continúa ${currentPn}`;
+                        }
+                        prevPn = currentPn;
+                    }
+
+                    porFecha[fechaKey].ordenes.push({
+                        ...order,
+                        tipo,
+                        pnAnterior,
+                        validacion
+                    });
+
+                    if (tipo === 'CAMBIO') {
+                        porFecha[fechaKey].totalCambios++;
+                    } else {
+                        porFecha[fechaKey].totalConfirmaciones++;
+                    }
+                });
+            });
+
+            renderDetailedView(porFecha);
+            updateDashboard(porFecha, groupedByLcTool);
+            renderTimelineHorizontal(porFecha);
+            guardarDatosPlaneacion(porFecha);
+        }
+
+        // ===== FUNCIÓN PARA GENERAR BADGE PM CON TOOLTIP =====
+        function generarBadgePM(orden) {
+            const { pmPct, nextHrsPM, hrs, diff, st, rlSt } = orden;
+            
+            // Si no hay datos de PM, no mostrar badge
+            if (!pmPct || pmPct === 0) return '';
+            
+            let nivel = '';
+            let colorClass = '';
+            let emoji = '';
+            let titulo = '';
+            let mensajeAlerta = '';
+            
+            // CRITERIO 1: CRÍTICO - NO PUEDE COMPLETAR
+            const noPuedeCompletar = nextHrsPM < 0 || (nextHrsPM > 0 && nextHrsPM < hrs);
+            
+            // CRITERIO 2: ADVERTENCIA - Puede completar pero margen < 10 horas
+            const margen = nextHrsPM - hrs;
+            const margenBajo = margen >= 0 && margen < 10;
+            
+            if (noPuedeCompletar) {
+                nivel = 'CRÍTICO';
+                colorClass = 'critical';
+                emoji = '🔴';
+                titulo = '⚠️ NO PUEDE COMPLETAR';
+                
+                if (nextHrsPM < 0) {
+                    mensajeAlerta = `<div class="tooltip-alert">⚠️ PM VENCIDO<br>El molde ya superó su límite de PM y debe recibir mantenimiento antes de producir.</div>`;
+                } else {
+                    mensajeAlerta = `<div class="tooltip-alert">⚠️ NO ALCANZA<br>El molde solo puede correr ${nextHrsPM.toFixed(1)} horas más antes de necesitar PM, pero la orden requiere ${hrs.toFixed(1)} horas.</div>`;
+                }
+            } else if (margenBajo) {
+                nivel = 'ADVERTENCIA';
+                colorClass = 'warning';
+                emoji = '🟡';
+                titulo = '⚠️ Margen Ajustado';
+                mensajeAlerta = `<div class="tooltip-warning">⚡ MARGEN BAJO<br>El molde puede completar la orden, pero solo le quedarán ${margen.toFixed(1)} horas de margen antes de necesitar PM.</div>`;
+            }
+            
+            // Si no cumple ninguno de los criterios, no mostrar badge
+            if (!nivel) return '';
+            
+            // Construir tooltip
+            const tooltipContent = `
+                <div class="tooltip-header">${titulo}</div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">PM actual:</span>
+                    <span class="tooltip-value">${pmPct.toFixed(0)}%</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Next PM:</span>
+                    <span class="tooltip-value">${nextHrsPM < 0 ? 'VENCIDO' : nextHrsPM.toFixed(1) + 'h'}</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Hrs requeridas:</span>
+                    <span class="tooltip-value">${hrs.toFixed(1)}h</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Diferencia:</span>
+                    <span class="tooltip-value">${diff.toFixed(1)}h</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Estado:</span>
+                    <span class="tooltip-value">${st} + ${rlSt}</span>
+                </div>
+                ${mensajeAlerta}
+            `;
+            
+            // Retornar HTML del badge con tooltip
+            return `
+                <span class="pm-tooltip">
+                    <span class="badge-pm ${colorClass}">${emoji} PM</span>
+                    <span class="tooltiptext">${tooltipContent}</span>
+                </span>
+            `;
+        }
+
+        function renderDetailedView(porFecha) {
+            // Guardar datos globales para filtrado
+            datosDesgloseGlobal = porFecha;
+            
+            generarDesgloseHTML(porFecha);
+        }
+
+        function generarDesgloseHTML(porFecha) {
+            let html = '';
+
+            Object.keys(porFecha).sort().forEach(fechaKey => {
+                const dia = porFecha[fechaKey];
+                const totalOrdenes = dia.ordenes.length;
+
+                const dateObj = new Date(fechaKey + 'T00:00:00');
+                const diaStr = dateObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+                html += `
+                <div class="day-section">
+                    <div class="day-header">
+                        📅 ${diaStr.charAt(0).toUpperCase() + diaStr.slice(1)}
+                    </div>
+                    <div class="day-stats">
+                        <div class="stat-box">
+                            <div class="stat-label">Total de Órdenes</div>
+                            <div class="stat-value total">${totalOrdenes}</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Cambios</div>
+                            <div class="stat-value cambios">${dia.totalCambios}</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Confirmaciones</div>
+                            <div class="stat-value confirmaciones">${dia.totalConfirmaciones}</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">% Cambios</div>
+                            <div class="stat-value">${totalOrdenes > 0 ? ((dia.totalCambios / totalOrdenes) * 100).toFixed(1) : 0}%</div>
+                        </div>
+                    </div>
+
+                    <table class="orders-table">
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Lc</th>
+                                <th>Tool</th>
+                                <th>PN</th>
+                                <th>Estado</th>
+                                <th>Transición PN</th>
+                                <th>Tipo</th>
+                                <th>Validación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                dia.ordenes.forEach(orden => {
+                    const rowClass = `order-row ${orden.tipo.toLowerCase()}`;
+                    const badgeClass = orden.tipo === 'CAMBIO' ? 'cambio' : 'confirmacion';
+                    const badge = `<span class="badge ${badgeClass}">${orden.tipo}</span>`;
+                    
+                    // NUEVO: Generar badge PM si hay riesgo
+                    const badgePM = generarBadgePM(orden);
+
+                    let pnTransicion = '';
+                    const pnValue = orden.pn || 'N/A';
+                    
+                    if (orden.tipo === 'CAMBIO' && orden.pnAnterior) {
+                        if (orden.pnAnterior === 'NUEVO') {
+                            pnTransicion = `<span class="pn-transition cambio">🆕 ${pnValue}</span>`;
+                        } else {
+                            pnTransicion = `<span class="pn-transition cambio">${orden.pnAnterior} → ${pnValue}</span>`;
+                        }
+                    } else {
+                        pnTransicion = `<span class="pn-transition confirmacion">${pnValue}</span>`;
+                    }
+
+                    const estado = `${orden.st} + ${orden.rlSt}`;
+
+                    html += `
+                        <tr class="${rowClass}">
+                            <td>${orden.hora}</td>
+                            <td><strong>${orden.lc}</strong></td>
+                            <td>${orden.tool}${MOLDES_EN_APP.includes(orden.tool.toLowerCase()) ? ` <span style="color: #4caf50; font-weight: 600; font-size: 11px;">✓ En App</span>` : ''}</td>
+                            <td>${pnValue}</td>
+                            <td>${estado}</td>
+                            <td>${pnTransicion}</td>
+                            <td>${badge}${badgePM}</td>
+                            <td style="font-size: 11px; color: #666;">${orden.validacion}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                </div>
+                `;
+            });
+
+            document.getElementById('cargaPorDiaContainer').innerHTML = html;
+        }
+
+        function filtrarDesglose() {
+            const termino = document.getElementById('buscarMolde').value.toUpperCase().trim();
+            
+            if (!termino) {
+                // Si no hay búsqueda, mostrar todo
+                generarDesgloseHTML(datosDesgloseGlobal);
+                return;
+            }
+            
+            // Crear objeto filtrado
+            const desglosesFiltrado = {};
+            
+            Object.keys(datosDesgloseGlobal).forEach(fechaKey => {
+                const dia = datosDesgloseGlobal[fechaKey];
+                
+                // Filtrar órdenes por molde (Tool) O máquina (Lc)
+                const ordenesFiltradas = dia.ordenes.filter(orden => 
+                    orden.tool.toUpperCase().includes(termino) ||
+                    orden.lc.toUpperCase().includes(termino)
+                );
+                
+                if (ordenesFiltradas.length > 0) {
+                    desglosesFiltrado[fechaKey] = {
+                        ...dia,
+                        ordenes: ordenesFiltradas,
+                        totalCambios: ordenesFiltradas.filter(o => o.tipo === 'CAMBIO').length,
+                        totalConfirmaciones: ordenesFiltradas.filter(o => o.tipo === 'CONFIRMACIÓN').length
+                    };
+                }
+            });
+            
+            if (Object.keys(desglosesFiltrado).length === 0) {
+                document.getElementById('cargaPorDiaContainer').innerHTML = `<div style="padding: 30px; text-align: center; color: #999;"><strong>No se encontraron resultados para:</strong> ${termino}</div>`;
+            } else {
+                generarDesgloseHTML(desglosesFiltrado);
+            }
+        }
+
+        function updateDashboard(porFecha, groupedByLcTool) {
+            const moldosUnicos = Object.keys(groupedByLcTool).length;
+            let totalCambios = 0;
+            let totalConfirmaciones = 0;
+            let totalOrdenes = 0;
+
+            Object.values(porFecha).forEach(dia => {
+                totalCambios += dia.totalCambios;
+                totalConfirmaciones += dia.totalConfirmaciones;
+                totalOrdenes += dia.ordenes.length;
+            });
+
+            document.getElementById('totalMoldes').textContent = moldosUnicos;
+            document.getElementById('totalCambios').textContent = totalCambios;
+            document.getElementById('totalConfirmaciones').textContent = totalConfirmaciones;
+            document.getElementById('totalOrdenes').textContent = totalOrdenes;
+        }
+
+        function renderTimelineHorizontal(porFecha) {
+            const sortedDates = Object.keys(porFecha).sort();
+            const container = document.getElementById('timelineHContainer');
+            const datesContainer = document.getElementById('timelineHDates');
+            const zonesContainer = document.getElementById('timelineZones');
+            
+            if (!sortedDates.length) return;
+            
+            const maxCambios = Math.max(...Object.values(porFecha).map(d => d.totalCambios || 0));
+            const chartHeight = 450;
+            const percentPerDay = 100 / sortedDates.length;
+            
+            let zonesHtml = '';
+            let datesHtml = '';
+            let eventsHtml = '';
+            
+            sortedDates.forEach((fechaKey, index) => {
+                const dia = porFecha[fechaKey];
+                const cambios = dia.totalCambios || 0;
+                
+                let color, estado;
+                if (cambios > CAPACIDAD_CAMBIOS) {
+                    color = 'rojo';
+                    estado = '⚠️ SOBRECARGA';
+                } else if (cambios >= 5) {
+                    color = 'amarillo';
+                    estado = '📌 AJUSTADA';
+                } else {
+                    color = 'verde';
+                    estado = '✅ DISPONIBLE';
+                }
+                
+                const dateObj = new Date(fechaKey + 'T00:00:00');
+                const dateLabel = dateObj.toLocaleDateString('es-ES', { month: '2-digit', day: '2-digit' });
+                const fechaFull = dateObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                
+                const leftPercent = index * percentPerDay + (percentPerDay / 2);
+                
+                // Zona de fondo
+                zonesHtml += `<div class="timeline-zone ${color}"></div>`;
+                
+                // Etiqueta de fecha
+                datesHtml += `<div class="timeline-date-label">${dateLabel}</div>`;
+                
+                // Número grande con cantidad de cambios (arriba del chart)
+                eventsHtml += `
+                    <div style="position: absolute; left: calc(${leftPercent}% - 25px); top: -90px; width: 50px; text-align: center;">
+                        <div style="font-size: 32px; font-weight: 900; color: ${color === 'verde' ? '#4caf50' : color === 'amarillo' ? '#ff9800' : '#f44336'}; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                            ${cambios}
+                        </div>
+                        <div style="font-size: 10px; color: #999; font-weight: 600; margin-top: 2px;">cambios</div>
+                    </div>
+                `;
+                
+                // Puntos de cambios - UNO POR CADA CAMBIO SEGÚN SU HORA
+                if (cambios > 0) {
+                    dia.ordenes.forEach(orden => {
+                        if (orden.tipo === 'CAMBIO') {
+                            // Extraer hora
+                            let hora = 12;
+                            let horaCompleta = orden.hora || '12:00';
+                            if (orden.hora) {
+                                const horaParts = orden.hora.split(':');
+                                if (horaParts.length > 0) {
+                                    hora = parseInt(horaParts[0]) || 12;
+                                }
+                            }
+                            
+                            const topPercent = (hora / 24) * 100;
+                            const xOffsetPercent = (Math.random() - 0.5) * 8;
+                            
+                            // Información del tooltip
+                            const molde = orden.tool || 'N/A';
+                            const maquina = orden.lc || 'N/A';
+                            const pnAnterior = orden.pnAnterior || 'N/A';
+                            const pnNuevo = orden.pn || 'N/A';
+                            
+                            const tooltipHtml = `<strong>Molde:</strong> ${molde}<br/><strong>Máquina:</strong> ${maquina}<br/><strong>Cambio:</strong> ${pnAnterior} → ${pnNuevo}<br/><strong>Hora:</strong> ${horaCompleta}`;
+                            
+                            eventsHtml += `
+                                <div class="timeline-point" style="left: calc(${leftPercent}% + ${xOffsetPercent}px - 7px); top: calc(${topPercent}% - 7px);">
+                                    <div class="timeline-point-circle"></div>
+                                    <div class="timeline-tooltip">${tooltipHtml}</div>
+                                </div>
+                            `;
+                        }
+                    });
+                }
+            });
+            
+            zonesContainer.innerHTML = zonesHtml;
+            datesContainer.innerHTML = datesHtml;
+            container.innerHTML = eventsHtml;
+            
+            // Renderizar eje Y con horas (0, 3, 6, 9, 12, 15, 18, 21)
+            const axisDiv = document.querySelector('.timeline-axis');
+            if (axisDiv) {
+                let axisHtml = '<div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-right: 2px solid #ddd; font-size: 11px; font-weight: 500; color: #666;">';
+                for (let h = 0; h <= 21; h += 3) {
+                    const topPercent = (h / 24) * 100;
+                    axisHtml += `<div style="position: absolute; width: 100%; text-align: right; padding-right: 8px; top: ${topPercent}%; transform: translateY(-50%);">${h.toString().padStart(2, '0')}:00</div>`;
+                }
+                axisHtml += '</div>';
+                axisDiv.innerHTML = axisHtml;
+            }
+        }
+
+        // ===== FUNCIONES PLAN DE TRABAJO =====
+
+        function guardarMolde() {
+            const codigo = document.getElementById('moldCode').value.toUpperCase();
+            const complejidad = document.getElementById('moldComplexity').value;
+            const tiempo = document.getElementById('moldTime').value;
+
+            if (!codigo || !complejidad || !tiempo) {
+                alert('Completa todos los campos');
+                return;
+            }
+
+            let moldes = JSON.parse(localStorage.getItem('moldDatabase')) || {};
+            moldes[codigo] = { complejidad, tiempo: parseInt(tiempo) };
+            localStorage.setItem('moldDatabase', JSON.stringify(moldes));
+
+            document.getElementById('moldCode').value = '';
+            document.getElementById('moldComplexity').value = '';
+            document.getElementById('moldTime').value = '';
+
+            mostrarListaMoldes();
+            actualizarVistaPlaneacion();
+            console.log('✅ Molde guardado:', codigo);
+        }
+
+        function mostrarListaMoldes() {
+            const moldes = JSON.parse(localStorage.getItem('moldDatabase')) || {};
+            const listDiv = document.getElementById('moldList');
+            
+            if (Object.keys(moldes).length === 0) {
+                listDiv.innerHTML = '<p style="color: #999; font-size: 13px;">No hay moldes guardados</p>';
+                return;
+            }
+
+            let html = '<table style="width: 100%; font-size: 13px; border-collapse: collapse;">';
+            html += '<tr style="background: #eee; border-bottom: 1px solid #ddd;"><th style="padding: 8px; text-align: left;">Código</th><th style="padding: 8px;">Complejidad</th><th style="padding: 8px;">Tiempo</th><th style="padding: 8px; text-align: center;">Acción</th></tr>';
+            
+            for (const [codigo, data] of Object.entries(moldes)) {
+                const color = data.complejidad === 'ALTA' ? '#f44336' : data.complejidad === 'MEDIA' ? '#ff9800' : '#4caf50';
+                html += `<tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px; font-weight: 600;">${codigo}</td>
+                    <td style="padding: 8px; text-align: center;"><span style="background: ${color}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px;">${data.complejidad}</span></td>
+                    <td style="padding: 8px; text-align: center;">${data.tiempo}h</td>
+                    <td style="padding: 8px; text-align: center;"><button onclick="eliminarMolde('${codigo}')" style="background: #f44336; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 600;">🗑️ Borrar</button></td>
+                </tr>`;
+            }
+            html += '</table>';
+            listDiv.innerHTML = html;
+        }
+
+        function eliminarMolde(codigo) {
+            if (!confirm(`¿Seguro que deseas borrar el molde ${codigo}?`)) return;
+            
+            let moldes = JSON.parse(localStorage.getItem('moldDatabase')) || {};
+            delete moldes[codigo];
+            localStorage.setItem('moldDatabase', JSON.stringify(moldes));
+            
+            mostrarListaMoldes();
+            actualizarVistaPlaneacion();
+            console.log('✅ Molde eliminado:', codigo);
+        }
+
+        function guardarDatosPlaneacion(porFecha) {
+            const datos = [];
+            Object.values(porFecha).forEach(dia => {
+                dia.ordenes.forEach(orden => {
+                    if (orden.tipo === 'CAMBIO') {
+                        datos.push({
+                            molde: orden.tool?.toUpperCase() || '?',
+                            maquina: orden.lc?.toUpperCase() || '?',
+                            pnAnterior: orden.pnAnterior || '',
+                            pnNuevo: orden.pn || '',
+                            fechaKey: orden.fechaKey || '',
+                            complejidad: '?',
+                            tiempo: 0
+                        });
+                    }
+                });
+            });
+            
+            if (datos.length > 0) {
+                localStorage.setItem('planDataFromResumen', JSON.stringify(datos));
+                console.log('✅ Datos de cambios guardados para Plan de Trabajo');
+            }
+        }
+
+        function actualizarVistaPlaneacion() {
+            const datosGuardados = localStorage.getItem('planDataFromResumen');
+            if (!datosGuardados) {
+                document.getElementById('distribucionBody').innerHTML = '<tr><td colspan="7" style="padding: 30px; text-align: center; color: #999;">⏳ Carga los archivos CSV en <strong>"Resumen General"</strong> primero</td></tr>';
+                document.getElementById('csvStats').style.display = 'none';
+                document.getElementById('statusIndicator').style.display = 'none';
+                return;
+            }
+
+            try {
+                const datos = JSON.parse(datosGuardados);
+                generarDistribucion(datos);
+            } catch(e) {
+                console.error('Error al parsear datos:', e);
+            }
+        }
+
+        function generarDistribucion(datos) {
+            // Guardar datos para filtrado
+            datosPlaneacionGlobal = datos;
+            
+            const moldes = JSON.parse(localStorage.getItem('moldDatabase')) || {};
+            const trackeo = JSON.parse(localStorage.getItem('trackeoCompletados')) || {};
+            const comentarios = JSON.parse(localStorage.getItem('comentariosPlaneacion')) || {};
+            const hoy = new Date().toISOString().split('T')[0];
+
+            const datosOrdenados = [...datos].sort((a, b) => {
+                const fechaA = new Date(a.fechaKey || '2999-01-01');
+                const fechaB = new Date(b.fechaKey || '2999-01-01');
+                return fechaA - fechaB;
+            });
+
+            let html = '';
+            let completados = 0;
+            let pendientes = 0;
+            let contador = 1;
+            let enApp = 0; // Contador de moldes en la app
+
+            datosOrdenados.forEach((item, idx) => {
+                const molde = item.molde?.toUpperCase() || '?';
+                const moldData = moldes[molde] || { complejidad: '?', tiempo: 0 };
+                // USAR IDENTIFICADOR ÚNICO CONSISTENTE: molde + pnNuevo + fechaKey + maquina
+                const ordenId = `${molde}_${item.pnNuevo}_${item.fechaKey}_${item.maquina}`;
+                const isCompleted = trackeo[ordenId];
+                
+                // Verificar si el molde está en la app
+                if (MOLDES_EN_APP.includes(molde.toLowerCase())) {
+                    enApp++;
+                }
+                
+                const fechaStr = item.fechaKey || '';
+                const fechaObj = new Date(fechaStr);
+                const hoyObj = new Date(hoy);
+                
+                let prioridad = '🟢 Baja';
+                let prioridadColor = '#c8e6c9';
+                
+                const isToday = fechaStr.startsWith(hoy);
+                const isSoon = (fechaObj - hoyObj) < 86400000 * 2;
+                const isLate = fechaObj < hoyObj && !isCompleted;
+
+                if (isToday || isSoon) {
+                    prioridad = '🔴 Crítica';
+                    prioridadColor = '#ffcdd2';
+                } else if ((fechaObj - hoyObj) < 86400000 * 7) {
+                    prioridad = '🟡 Media';
+                    prioridadColor = '#ffe0b2';
+                }
+
+                let estado = '📅 Próxima';
+                if (isLate) estado = '⚠️ Retrasada';
+                if (isCompleted) { 
+                    estado = '✅ Completada'; 
+                    completados++;
+                } else {
+                    pendientes++;
+                }
+
+                const complejidadColor = moldData.complejidad === 'ALTA' ? '#f44336' : 
+                                        moldData.complejidad === 'MEDIA' ? '#ff9800' : '#4caf50';
+                
+                const complejidadEmoji = moldData.complejidad === 'ALTA' ? '🔴' : 
+                                        moldData.complejidad === 'MEDIA' ? '🟡' : '🟢';
+                
+                const pnTransicion = `${item.pnAnterior || '-'} → ${item.pnNuevo || '-'}`;
+                const comentarioGuardado = comentarios[ordenId] || '';
+                
+                // Color de fecha según prioridad (SOLO TEXTO, sin fondo)
+                let estiloFecha = 'color: #333; font-weight: 600;';
+                
+                if (isToday || isSoon) {
+                    estiloFecha = 'color: #f44336; font-weight: 700;';
+                } else if ((fechaObj - hoyObj) < 86400000 * 7) {
+                    estiloFecha = 'color: #ff9800; font-weight: 600;';
+                }
+                
+                // Fondo de fila: VERDE si completada, normal si no
+                let estiloFila = 'border-bottom: 1px solid #eee;';
+                if (isCompleted) {
+                    estiloFila = 'border-bottom: 1px solid #eee; background: #c8e6c9;';
+                }
+
+                html += `<tr style="${estiloFila}">
+                    <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">#${contador}</td>
+                    <td style="padding: 12px; text-align: center;"><input type="checkbox" ${isCompleted ? 'checked' : ''} onchange="toggleCompletado('${ordenId}', this.checked)" style="cursor: pointer;"></td>
+                    <td style="padding: 12px; text-align: center; font-weight: 700; color: #333;">${item.maquina}</td>
+                    <td style="padding: 12px; font-weight: 600;">${molde}${MOLDES_EN_APP.includes(molde.toLowerCase()) ? ` <span style="color: #4caf50; font-weight: 600; font-size: 11px;">✓ En App</span>` : ''}</td>
+                    <td style="padding: 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: ${complejidadColor}; color: white; padding: 4px 8px; border-radius: 3px; font-size: 11px; font-weight: 600;">${complejidadEmoji} ${moldData.complejidad}</span>
+                            <span style="font-family: monospace; color: #d32f2f; font-size: 11px; font-weight: 600;">${pnTransicion}</span>
+                        </div>
+                    </td>
+                    <td style="padding: 12px; text-align: center; font-size: 12px; ${estiloFecha}">${fechaStr}</td>
+                    <td style="padding: 12px; text-align: center;">${estado}</td>
+                    <td style="padding: 12px;">
+                        <input type="text" 
+                            placeholder="Anomalía/Nota" 
+                            value="${comentarioGuardado}" 
+                            onchange="guardarComentario('${ordenId}', this.value)"
+                            style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+                    </td>
+                </tr>`;
+                contador++;
+            });
+
+            document.getElementById('distribucionBody').innerHTML = html || '<tr><td colspan="7" style="padding: 30px; text-align: center; color: #999;">Sin cambios de configuración detectados</td></tr>';
+
+            const horasDisponibles = 12;
+            const estado = completados > 0 ? '✅ ADELANTADO' : '⚠️ EN ESPERA';
+            document.getElementById('todayDate').textContent = hoy;
+            document.getElementById('capacityLeft').textContent = horasDisponibles + 'h';
+            document.getElementById('statusEmoji').textContent = completados > 0 ? '✅' : '⏳';
+            document.getElementById('statusText').textContent = estado;
+            document.getElementById('statusIndicator').style.display = 'block';
+
+            document.getElementById('csvMoldCount').textContent = datosOrdenados.length;
+            const fechas = [...new Set(datosOrdenados.map(d => d.fechaKey))].sort();
+            document.getElementById('csvDateRange').textContent = fechas.length > 0 ? `${fechas[0]} → ${fechas[fechas.length - 1]}` : '-';
+            document.getElementById('csvStats').style.display = 'block';
+
+            // Actualizar indicador de App
+            const totalMoldes = datosOrdenados.length;
+            const porcentajeApp = totalMoldes > 0 ? Math.round((enApp / totalMoldes) * 100) : 0;
+            document.getElementById('appMoldCount').textContent = `${enApp}/${totalMoldes}`;
+            document.getElementById('appMoldPercent').textContent = porcentajeApp + '%';
+
+            const porcentaje = totalMoldes > 0 ? Math.round((completados / totalMoldes) * 100) : 0;
+
+            // Actualizar elementos opcionales (pueden no existir en todas las vistas)
+            const completePercentEl = document.getElementById('completePercent');
+            const completedCountEl = document.getElementById('completedCount');
+            const hoursUsedEl = document.getElementById('hoursUsed');
+            const pendingCountEl = document.getElementById('pendingCount');
+            
+            if (completePercentEl) completePercentEl.textContent = porcentaje + '%';
+            if (completedCountEl) completedCountEl.textContent = completados;
+            if (hoursUsedEl) hoursUsedEl.textContent = '0h';
+            if (pendingCountEl) pendingCountEl.textContent = pendientes;
+
+            // Actualizar KPIs de cumplimiento
+            actualizarKPIsCumplimiento(totalMoldes, completados, pendientes, porcentaje);
+        }
+
+        function filtrarPlaneacion() {
+            const termino = document.getElementById('buscarPlaneacion').value.toUpperCase().trim();
+            
+            if (!termino) {
+                // Si no hay búsqueda, mostrar todo
+                generarDistribucion(datosPlaneacionGlobal);
+                return;
+            }
+            
+            // Filtrar datos por molde O máquina
+            const datosFiltrados = datosPlaneacionGlobal.filter(item => {
+                const molde = (item.molde || '').toUpperCase();
+                const maquina = (item.maquina || '').toUpperCase();
+                
+                return molde.includes(termino) || maquina.includes(termino);
+            });
+            
+            if (datosFiltrados.length === 0) {
+                document.getElementById('distribucionBody').innerHTML = `
+                    <tr>
+                        <td colspan="8" style="padding: 30px; text-align: center; color: #999;">
+                            <strong>No se encontraron resultados para:</strong> ${termino}
+                        </td>
+                    </tr>
+                `;
+                
+                // Ocultar stats cuando no hay resultados
+                document.getElementById('csvStats').style.display = 'none';
+                document.getElementById('statusIndicator').style.display = 'none';
+            } else {
+                // Renderizar con datos filtrados
+                generarDistribucion(datosFiltrados);
+            }
+        }
+
+        function actualizarKPIsCumplimiento(total, completados, pendientes, porcentaje) {
+            const META = 80;
+            
+            // Actualizar porcentaje
+            document.getElementById('porcentajeCumplimiento').textContent = `${porcentaje}%`;
+            document.getElementById('cambiosCompletados').textContent = `${completados}/${total}`;
+            document.getElementById('cambiosPendientes').textContent = pendientes;
+            
+            // Determinar estado y color
+            let kpiElement = document.getElementById('kpiCumplimiento');
+            let estado = '✓ META CUMPLIDA';
+            let clase = 'alto';
+            
+            if (porcentaje < 50) {
+                estado = '❌ CRÍTICO';
+                clase = 'bajo';
+            } else if (porcentaje < META) {
+                estado = '⚠️ EN PROCESO';
+                clase = 'medio';
+            }
+            
+            // Actualizar elemento
+            kpiElement.className = `kpi-box ${clase}`;
+            document.getElementById('estadoCumplimiento').textContent = estado;
+            
+            // Diferencia vs meta
+            const diferencia = porcentaje - META;
+            document.getElementById('diferenciaMeta').textContent = `${diferencia > 0 ? '+' : ''}${diferencia}%`;
+            
+            if (porcentaje >= META) {
+                document.getElementById('textoMeta').textContent = `Cumplida`;
+            } else {
+                document.getElementById('textoMeta').textContent = `Falta ${META - porcentaje}%`;
+            }
+        }
+
+        function toggleCompletado(ordenId, checked) {
+            let trackeo = JSON.parse(localStorage.getItem('trackeoCompletados')) || {};
+            if (checked) {
+                trackeo[ordenId] = true;
+            } else {
+                delete trackeo[ordenId];
+            }
+            localStorage.setItem('trackeoCompletados', JSON.stringify(trackeo));
+            const planData = JSON.parse(localStorage.getItem('planDataFromResumen')) || [];
+            generarDistribucion(planData);
+            
+            // Actualizar análisis de retrasadas si está visible
+            actualizarAnalisisRetrasadas();
+        }
+
+        function guardarComentario(ordenId, comentario) {
+            let comentarios = JSON.parse(localStorage.getItem('comentariosPlaneacion')) || {};
+            if (comentario.trim() === '') {
+                delete comentarios[ordenId];
+            } else {
+                comentarios[ordenId] = comentario;
+            }
+            localStorage.setItem('comentariosPlaneacion', JSON.stringify(comentarios));
+            console.log('✅ Comentario guardado para orden:', ordenId);
+        }
+
+        // ===== FUNCIONES ANÁLISIS DE RETRASADAS =====
+        
+        let chartComparativa = null;
+        let chartCumplimiento = null;
+        
+        function actualizarAnalisisRetrasadas() {
+            const datosGuardados = localStorage.getItem('planDataFromResumen');
+            if (!datosGuardados) {
+                console.log('❌ No hay datos guardados para análisis');
+                return;
+            }
+            
+            try {
+                const datos = JSON.parse(datosGuardados);
+                const trackeo = JSON.parse(localStorage.getItem('trackeoCompletados')) || {};
+                const comentarios = JSON.parse(localStorage.getItem('comentariosPlaneacion')) || {};
+                
+                console.log('📊 Actualizando Análisis de Cumplimiento...');
+                console.log('Total de órdenes en datos:', datos.length);
+                console.log('Trackeo completados:', Object.keys(trackeo).length, trackeo);
+                
+                const hoy = new Date();
+                hoy.setHours(0, 0, 0, 0);
+                
+                let retrasadas = [];
+                let totalCompletados = 0;
+                let totalPlaneados = datos.length;
+                
+                // Agrupar por fecha para gráfica
+                const datosPorFecha = {};
+                
+                datos.forEach((item, idx) => {
+                    const molde = item.molde?.toUpperCase() || '?';
+                    // USAR EL MISMO IDENTIFICADOR ÚNICO QUE EN generarDistribucion
+                    const ordenId = `${molde}_${item.pnNuevo}_${item.fechaKey}_${item.maquina}`;
+                    const isCompleted = trackeo[ordenId];
+                    
+                    if (idx < 3) { // Log solo las primeras 3 para debug
+                        console.log(`Orden ${idx}: ${ordenId} - Completada: ${isCompleted}`);
+                    }
+                    
+                    const fechaStr = item.fechaKey || '';
+                    
+                    // Agrupar para gráfica
+                    if (!datosPorFecha[fechaStr]) {
+                        datosPorFecha[fechaStr] = { planeados: 0, completados: 0 };
+                    }
+                    datosPorFecha[fechaStr].planeados++;
+                    
+                    if (isCompleted) {
+                        totalCompletados++;
+                        datosPorFecha[fechaStr].completados++;
+                    }
+                    
+                    const fechaObj = new Date(fechaStr);
+                    fechaObj.setHours(0, 0, 0, 0);
+                    
+                    // Solo considerar retrasadas si: fecha < hoy Y no completada
+                    if (fechaObj < hoy && !isCompleted) {
+                        const diasRetrasado = Math.floor((hoy - fechaObj) / (1000 * 60 * 60 * 24));
+                        const comentarioGuardado = comentarios[ordenId] || '';
+                        
+                        retrasadas.push({
+                            id: idx + 1,
+                            molde: molde,
+                            maquina: item.maquina || '?',
+                            fecha: fechaStr,
+                            diasRetrasado: diasRetrasado,
+                            estado: '⚠️ Retrasada',
+                            comentario: comentarioGuardado
+                        });
+                    }
+                });
+                
+                console.log('📋 Resumen de agrupación por fecha:');
+                Object.keys(datosPorFecha).sort().forEach(fecha => {
+                    console.log(`   ${fecha}: ${datosPorFecha[fecha].planeados} planeados, ${datosPorFecha[fecha].completados} completados`);
+                });
+                
+                // Calcular KPIs
+                const totalRetrasadas = retrasadas.length;
+                const porcentajeCumplimiento = totalPlaneados > 0 
+                    ? Math.round((totalCompletados / totalPlaneados) * 100) 
+                    : 0;
+                const diasPromedio = totalRetrasadas > 0 
+                    ? Math.round(retrasadas.reduce((sum, r) => sum + r.diasRetrasado, 0) / totalRetrasadas) 
+                    : 0;
+                const fechaMasVieja = retrasadas.length > 0 
+                    ? retrasadas.reduce((min, r) => new Date(r.fecha) < new Date(min.fecha) ? r : min).fecha
+                    : '-';
+                
+                console.log('📈 Resultados:');
+                console.log(`   Total Planeados: ${totalPlaneados}`);
+                console.log(`   Total Completados: ${totalCompletados}`);
+                console.log(`   % Cumplimiento: ${porcentajeCumplimiento}%`);
+                console.log(`   Total Retrasadas: ${totalRetrasadas}`);
+                
+                // Actualizar KPIs principales
+                document.getElementById('totalPlaneadosKPI').textContent = totalPlaneados;
+                document.getElementById('totalCompletadosKPI').textContent = totalCompletados;
+                document.getElementById('porcentajeCumplimientoKPI').textContent = porcentajeCumplimiento + '%';
+                document.getElementById('totalRetrasadas').textContent = totalRetrasadas;
+                
+                // Estado de cumplimiento
+                let estadoTexto = '';
+                if (porcentajeCumplimiento >= 80) {
+                    estadoTexto = '✅ Meta Cumplida';
+                } else if (porcentajeCumplimiento >= 50) {
+                    estadoTexto = '⚠️ En Proceso';
+                } else {
+                    estadoTexto = '❌ Crítico';
+                }
+                document.getElementById('estadoCumplimientoKPI').textContent = estadoTexto;
+                
+                // Retrasadas
+                document.getElementById('diasPromedio').textContent = diasPromedio;
+                document.getElementById('fechaMasVieja').textContent = fechaMasVieja;
+                
+                // Generar gráficas
+                generarGraficaComparativa(datosPorFecha);
+                generarGraficaCumplimiento(porcentajeCumplimiento);
+                
+                // Generar tabla de retrasadas
+                generarTablaRetrasadas(retrasadas);
+                
+            } catch(e) {
+                console.error('Error al actualizar análisis de retrasadas:', e);
+            }
+        }
+        
+        function generarGraficaComparativa(datosPorFecha) {
+            const fechasOrdenadas = Object.keys(datosPorFecha).sort();
+            
+            console.log('📊 Datos para gráfica comparativa:');
+            fechasOrdenadas.forEach(f => {
+                console.log(`   ${f}: Planeados=${datosPorFecha[f].planeados}, Completados=${datosPorFecha[f].completados}`);
+            });
+            
+            const labels = fechasOrdenadas.map(f => {
+                // Parsear fecha correctamente para evitar desfase de timezone
+                const [year, month, day] = f.split('-');
+                const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                return date.toLocaleDateString('es-ES', { month: '2-digit', day: '2-digit' });
+            });
+            const planeados = fechasOrdenadas.map(f => datosPorFecha[f].planeados);
+            const completados = fechasOrdenadas.map(f => datosPorFecha[f].completados);
+            
+            console.log('Labels (etiquetas):', labels);
+            console.log('Planeados por día:', planeados);
+            console.log('Completados por día:', completados);
+            
+            if (chartComparativa) chartComparativa.destroy();
+            
+            const ctx = document.getElementById('chartComparativa').getContext('2d');
+            chartComparativa = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Planeados',
+                            data: planeados,
+                            backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                            borderColor: 'rgba(102, 126, 234, 1)',
+                            borderWidth: 2,
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Completados',
+                            data: completados,
+                            backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                            borderColor: 'rgba(16, 185, 129, 1)',
+                            borderWidth: 2,
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: 'top',
+                            labels: {
+                                font: { size: 12, weight: 'bold' },
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    if (context.datasetIndex === 0) {
+                                        const completado = completados[context.dataIndex];
+                                        const total = planeados[context.dataIndex];
+                                        const pct = total > 0 ? Math.round((completado/total)*100) : 0;
+                                        return `Completado: ${pct}%`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                font: { size: 11 }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: { size: 11 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function generarGraficaCumplimiento(porcentaje) {
+            const META = 80;
+            const faltante = Math.max(0, 100 - porcentaje);
+            
+            if (chartCumplimiento) chartCumplimiento.destroy();
+            
+            const ctx = document.getElementById('chartCumplimiento').getContext('2d');
+            chartCumplimiento = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Cumplido', 'Faltante'],
+                    datasets: [{
+                        data: [porcentaje, faltante],
+                        backgroundColor: [
+                            porcentaje >= META ? '#10b981' : porcentaje >= 50 ? '#f59e0b' : '#ef4444',
+                            '#e5e7eb'
+                        ],
+                        borderColor: ['white', 'white'],
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: 'bottom',
+                            labels: {
+                                font: { size: 12, weight: 'bold' },
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    return context.label + ': ' + context.parsed + '%';
+                                }
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                },
+                plugins: [{
+                    id: 'centerText',
+                    afterDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        const centerX = (chart.chartArea.left + chart.chartArea.right) / 2;
+                        const centerY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+                        
+                        ctx.save();
+                        ctx.font = 'bold 32px Arial';
+                        ctx.fillStyle = porcentaje >= META ? '#10b981' : porcentaje >= 50 ? '#f59e0b' : '#ef4444';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(porcentaje + '%', centerX, centerY - 10);
+                        
+                        ctx.font = '12px Arial';
+                        ctx.fillStyle = '#666';
+                        ctx.fillText('vs Meta 80%', centerX, centerY + 20);
+                        ctx.restore();
+                    }
+                }]
+            });
+        }
+        
+        function generarTablaRetrasadas(retrasadas) {
+            let html = '';
+            
+            if (retrasadas.length === 0) {
+                html = '<tr><td colspan="7" style="padding: 30px; text-align: center; color: #4caf50; font-weight: 600;">✅ ¡Excelente! No hay órdenes retrasadas</td></tr>';
+            } else {
+                // Ordenar por días retrasados (mayor a menor)
+                retrasadas.sort((a, b) => b.diasRetrasado - a.diasRetrasado);
+                
+                retrasadas.forEach(item => {
+                    // Determinar clase de color según días
+                    let claseColor = '';
+                    if (item.diasRetrasado < 3) {
+                        claseColor = 'retrasada-amarillo';
+                    } else if (item.diasRetrasado <= 7) {
+                        claseColor = 'retrasada-naranja';
+                    } else {
+                        claseColor = 'retrasada-rojo';
+                    }
+                    
+                    html += `<tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 12px; text-align: center; font-weight: 700; color: #667eea;">#${item.id}</td>
+                        <td style="padding: 12px; text-align: center; font-weight: 600;">${item.molde}</td>
+                        <td style="padding: 12px; text-align: center; font-weight: 600;">${item.maquina}</td>
+                        <td style="padding: 12px; text-align: left;">${item.fecha}</td>
+                        <td style="padding: 12px; text-align: center;" class="${claseColor}">${item.diasRetrasado} días</td>
+                        <td style="padding: 12px; text-align: center;">${item.estado}</td>
+                        <td style="padding: 12px;">${item.comentario || '-'}</td>
+                    </tr>`;
+                });
+            }
+            
+            document.getElementById('tablaRetrasadasBody').innerHTML = html;
+        }
+
+        // INICIALIZAR
+        window.addEventListener('load', function() {
+            mostrarListaMoldes();
+        });
+    </script>
+</body>
+</html>
